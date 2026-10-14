@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Registro de productos</title>
+    <style>
+      body {
+        max-width: 640px;
+        margin: 3rem auto;
+        padding: 0 1rem;
+        font-family: Arial, sans-serif;
+      }
+
+      form {
+        display: grid;
+        gap: 0.75rem;
+        max-width: 320px;
+      }
+
+      input,
+      button {
+        box-sizing: border-box;
+        padding: 0.6rem;
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      #mensaje {
+        min-height: 1.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Registro de productos</h1>
+      <form id="formulario-producto">
+        <label for="nombre">Nombre del producto</label>
+        <input id="nombre" name="nombre" type="text" required maxlength="120" />
+
+        <label for="categoria">Categoría</label>
+        <input id="categoria" name="categoria" type="text" required maxlength="80" />
+
+        <label for="precio">Precio</label>
+        <input id="precio" name="precio" type="number" min="0.01" step="0.01" required />
+
+        <button type="submit">Guardar</button>
+      </form>
+
+      <p id="mensaje" role="status" aria-live="polite"></p>
+      <h2>Productos registrados</h2>
+      <ul id="lista-productos"></ul>
+    </main>
+
+    <script>
+      const formulario = document.querySelector("#formulario-producto");
+      const mensaje = document.querySelector("#mensaje");
+      const lista = document.querySelector("#lista-productos");
+
+      async function cargarProductos() {
+        const respuesta = await fetch("/api/productos");
+        if (!respuesta.ok) {
+          throw new Error("No se pudieron cargar los productos.");
+        }
+
+        const productos = await respuesta.json();
+        lista.replaceChildren();
+
+        for (const producto of productos) {
+          const elemento = document.createElement("li");
+          elemento.textContent = `${producto.nombre} — ${producto.categoria} — $${Number(producto.precio).toFixed(2)}`;
+          lista.append(elemento);
+        }
+      }
+
+      formulario.addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+        mensaje.textContent = "";
+
+        const datos = Object.fromEntries(new FormData(formulario));
+        datos.precio = Number(datos.precio);
+
+        try {
+          const respuesta = await fetch("/api/productos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datos),
+          });
+
+          const resultado = await respuesta.json();
+          if (!respuesta.ok) {
+            throw new Error(resultado.error || "No se pudo guardar el producto.");
+          }
+
+          formulario.reset();
+          mensaje.textContent = "Producto guardado correctamente.";
+          await cargarProductos();
+        } catch (error) {
+          mensaje.textContent = error.message;
+        }
+      });
+
+      cargarProductos().catch((error) => {
+        mensaje.textContent = error.message;
+      });
+    </script>
+  </body>
+</html>
